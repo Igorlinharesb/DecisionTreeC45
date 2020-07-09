@@ -63,11 +63,12 @@ function histograms(dataset, feature_names)
     % Laço que povoa os subplots
     for i=1:m
         subplot(rows,3, i);
+        bins = linspace(min(dataset(:, i)), max(dataset(:, i)), 25)
         for j=1:length(classes)
             % Filtra os dados por classe
             class_data = dataset(dataset(:, end)==classes(j), :);
             % Plota o histograma de cada classe
-            histogram(class_data(:,i), 10, 'FaceColor', colors(j,:), ...
+            histogram(class_data(:,i), bins, 'FaceColor', colors(j,:), ...
                         'FaceAlpha', 0.7);
             hold on;
         end
