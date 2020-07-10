@@ -24,7 +24,7 @@ features = {'Álcool', 'Ácido málico', 'Cinza', 'Alcalinidade da cinza',...
             'Intensidade da cor', 'Matiz', 'OD280/OD315', 'Prolina'};
 
 % Plotando histograma dos dados para análise
-% histograms(data, features)
+histograms(data, features)
 
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
@@ -39,9 +39,8 @@ selected_data(:, 5) = selected_data(:, 5)/1000;
 % Criando a árvore
 % root = find_root(selected_data) % Nó raiz
 root = find_root(selected_data);
+tree = expand_tree(root);
 
-
-[root.child_1, root.child_2] = expand_node(root);
 % Laço que subdivide a árvore até chegar às folhas   
 
 
@@ -82,10 +81,9 @@ end
 
 % Função que realiza a plotagem dos scatter plots dos atributos
 % selecionados
-% function pairplots
+% function pairplots(dataset, feature_names)
 
-
-% Função que encontra a melhor divisão
+% Função que encontra a condição que melhor separa os dados e retorna o nó
 function node = best_node(dataset)
     
     best_gain = 0;
@@ -125,10 +123,12 @@ function root_node = find_root(dataset)
     root_node = best_node(dataset);
     root_node.type = 'r'; % r para root
     root_node.depth = 0;
+    root_node.expanded = 0;
     
 end
 
-% Função que retorna zero se os dados representam um nó 
+% Função que retorna zero se os dados representam um nó intermediário e
+% retorna a classe no caso de ser uma folha
 function isleaf = is_leaf(data)
     
     isleaf = 0;
@@ -157,8 +157,8 @@ function isleaf = is_leaf(data)
     end
 end
 
-% Função que espande os nós
-function [node_1, node_2] = expand_node(node_father)
+% Função que espande a árvore
+function node_father = expand_tree(node_father)
     
     % Extraindo os dados do nó pai
     data_father = node_father.data;
@@ -181,6 +181,7 @@ function [node_1, node_2] = expand_node(node_father)
         node_1 = best_node(data_1);
         node_1.type = 'm';
         node_1.depth = depth+1;
+        node_1.expanded = 0;
     else
         node_1.entopy = entropy(data_1);
         node_1.type = 'l'; % l para folha
@@ -197,11 +198,24 @@ function [node_1, node_2] = expand_node(node_father)
         node_2 = best_node(data_2);
         node_2.type = 'm';
         node_2.depth = depth+1;
+        node_2.expanded = 0;
     else
         node_2.entopy = entropy(data_2);
         node_2.type = 'l'; % l para folha
         node_2.depth = depth+1;
         node_2.class = isleaf;
+    end
+    
+    if node_1.type == 'l'
+        node_father.child_1 = node_1;
+    else
+        node_father.child_1 = expand_tree(node_1);
+    end
+    
+    if node_2.type == 'l'
+        node_father.child_2 = node_2;
+    else
+        node_father.child_2 = expand_tree(node_2);
     end
 end
 
