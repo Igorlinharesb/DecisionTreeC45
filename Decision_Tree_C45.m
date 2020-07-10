@@ -38,9 +38,11 @@ selected_data(:, 5) = selected_data(:, 5)/1000;
 
 % Criando a árvore
 % root = find_root(selected_data) % Nó raiz
-root = best_node(selected_data)
+root = find_root(selected_data);
+
+
+[root.child_1, root.child_2] = expand_node(root);
 % Laço que subdivide a árvore até chegar às folhas   
-%node_children = raise_nodes(root)
 
 
 % Cross validation
@@ -82,18 +84,6 @@ end
 % selecionados
 % function pairplots
 
-% Função que divide o dataset presente no nó de acordo com a condição
-% presente no nó
-function [data1, data2] = split_data(node)
-    
-    data = node.data; % Dados do nó antes da divisão
-    feature = node.feature; % Índice do atributo utilzizado para divisão
-    bias = node.bias; % Threshold utilizado para divisão
-    
-    % Divisão dos dados
-    data1 = data(data(:, feature) <= bias, :);
-    data2 = data(data(:, feature) > bias, :);
-end
 
 % Função que encontra a melhor divisão
 function node = best_node(dataset)
@@ -113,12 +103,13 @@ function node = best_node(dataset)
             data1 = dataset(dataset(:, feature) <= bias, :);
             data2 = dataset(dataset(:, feature) > bias, :);
             
-            % Cálculo do ganho de informação
-            gain = information_gain(dataset, data1, data2);
+            % Cálculo da entropia inicial e do ganho de informação
+            [initial_entropy, gain] = information_gain(dataset, data1, data2);
             
             node.data = dataset;
             
             if gain > best_gain
+                node.entropy = initial_entropy;
                 node.feature = feature;
                 node.bias = bias;
                 node.gain = gain;
@@ -132,30 +123,86 @@ end
 function root_node = find_root(dataset)
     
     root_node = best_node(dataset);
-    root_node.type = 'r' % r para root
+    root_node.type = 'r'; % r para root
     root_node.depth = 0;
     
 end
 
-% Função que espande os nós
-function node_children = raise_nodes(node_father)
+% Função que retorna zero se os dados representam um nó 
+function isleaf = is_leaf(data)
     
+    isleaf = 0;
+    
+    % Calcula as probabilidades das classes nos dados do nó
+    classes = unique(data(:, end));
+    
+    prior_probs = zeros(length(classes), 1);
+    
+    for i=1: length(classes)
+        % Calcula a probabilidade a prior de cada classe
+        count = length(data(data(:,end) == classes(i)));
+        prior_probs(i) = count/size(data, 1);
+        
+        % Verifica se alguma das classes aparece em mais de 80% dos dados e
+        % retorna o valor da classe predominante
+        if prior_probs(i) > 0.8
+            isleaf = classes(i);
+        end
+        
+        % Verifica se o nó possui poucos dados e retorna a classe com maior
+        % probabilidade
+        if size(data, 1) < 5 && prior_probs(i) == max(prior_probs)
+            isleaf = classes(i);
+        end
+    end
+end
+
+% Função que espande os nós
+function [node_1, node_2] = expand_node(node_father)
+    
+    % Extraindo os dados do nó pai
     data_father = node_father.data;
     feature = node_father.feature;
     bias = node_father.bias;
     depth = node_father.depth;
     
-    % Inicializando o nó filho 1
-    node_1.type = 'm'; % m quer dizer nó intermediário
-    node_1.depth = depth+1;
+    % Divisão dos dados e atribuição aos nós filhos
+    data_1 = data_father(data_father(:, feature) <= bias, :);
+    data_2 = data_father(data_father(:, feature) > bias, :);
     
-    % Inicializando o nó filho 1
-    node_2.type = 'm'; % m quer dizer nó intermediário
-    node_2.depth = depth+1;
+    % Iniciando com o nó 1
     
-    [node_1.data, node_2.data] = split_data(node_father);
+    % Verifica se os dados constituem uma folha ou um nó intermediário
+    isleaf = is_leaf(data_1);
     
-    node_children = [node_1 node_2];
+    if isleaf == 0
+        % Caso o não seja uma folha é encontrado o melhor critério de
+        % divisão
+        node_1 = best_node(data_1);
+        node_1.type = 'm';
+        node_1.depth = depth+1;
+    else
+        node_1.entopy = entropy(data_1);
+        node_1.type = 'l'; % l para folha
+        node_1.depth = depth+1;
+        node_1.class = isleaf;
+    end
+    
+    % Repetindo o processo para o nó 2
+    isleaf = is_leaf(data_2);
+    
+    if isleaf == 0
+        % Caso o não seja uma folha é encontrado o melhor critério de
+        % divisão
+        node_2 = best_node(data_2);
+        node_2.type = 'm';
+        node_2.depth = depth+1;
+    else
+        node_2.entopy = entropy(data_2);
+        node_2.type = 'l'; % l para folha
+        node_2.depth = depth+1;
+        node_2.class = isleaf;
+    end
 end
 
 % Função que calcula a entropia
@@ -173,7 +220,7 @@ function result = entropy(dataset)
 end
 
 % Função que calcula o ganho de informação
-function gain = information_gain(dataset, split1, split2)
+function [initial_entropy, gain] = information_gain(dataset, split1, split2)
     initial_entropy = entropy(dataset);
     ent1 = entropy(split1);
     ent2 = entropy(split2);
