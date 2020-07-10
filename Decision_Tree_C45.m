@@ -24,7 +24,7 @@ features = {'Álcool', 'Ácido málico', 'Cinza', 'Alcalinidade da cinza',...
             'Intensidade da cor', 'Matiz', 'OD280/OD315', 'Prolina'};
 
 % Plotando histograma dos dados para análise
-histograms(data, features)
+% histograms(data, features)
 
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
@@ -37,9 +37,10 @@ selected_data(:, 5) = selected_data(:, 5)/1000;
 % pair plots
 
 % Criando a árvore
-root = find_root(selected_data); % Nó raiz
-
-% Laço que subdivide a árvore até chegar às folhas    
+% root = find_root(selected_data) % Nó raiz
+root = best_node(selected_data)
+% Laço que subdivide a árvore até chegar às folhas   
+%node_children = raise_nodes(root)
 
 
 % Cross validation
@@ -63,7 +64,7 @@ function histograms(dataset, feature_names)
     % Laço que povoa os subplots
     for i=1:m
         subplot(rows,3, i);
-        bins = linspace(min(dataset(:, i)), max(dataset(:, i)), 25)
+        bins = linspace(min(dataset(:, i)), max(dataset(:, i)), 25);
         for j=1:length(classes)
             % Filtra os dados por classe
             class_data = dataset(dataset(:, end)==classes(j), :);
@@ -94,49 +95,67 @@ function [data1, data2] = split_data(node)
     data2 = data(data(:, feature) > bias, :);
 end
 
-% Função que encontra o nó raiz da árvore
-function root_node = find_root(dataset)
+% Função que encontra a melhor divisão
+function node = best_node(dataset)
     
-    % Inicializando o valor do melhor ganho
     best_gain = 0;
     
-    % Dividir o os dados com base em cada cada um dos atributos escolhendo
-    % o valor que melhor divide a base de dados
     for feature=1:size(dataset, 2)-1
-        % Selecionando o range do atributo para fazer as divisões, a
-        % quantidade de divisões e o tamanho de passo de incremento do
-        % valor para dividir o dataset
         range = max(dataset(:, feature)) - min(dataset(:, feature));
         divisions = 10;
         pace = range/10;
         
         % Testando 10 valores do atributo para separar o dataset
         for i=1:divisions-1
-            % Criando um nó temporário para avaliar o ganho de informação
-            temp_node.type = 'root';
-            temp_node.feature = feature;
-            temp_node.bias = min(dataset(:, feature))+ i*pace;
-            temp_node.data = dataset;
-            % Dividindo a base de dados inicial com base na condição do nó
-            [data1, data2] = split_data(temp_node);
-            % Avaliando o ganho dessa divisão
-            gain = information_gain(dataset, data1, data2);
-            % Atribuindo o ganho ao nó temporário
-            temp_node.gain = gain;
+            bias = min(dataset(:, feature))+ i*pace;
             
-            % Avalia se o ganho obtido com a divisão foi o melhor
+            % Divisão dos dados
+            data1 = dataset(dataset(:, feature) <= bias, :);
+            data2 = dataset(dataset(:, feature) > bias, :);
+            
+            % Cálculo do ganho de informação
+            gain = information_gain(dataset, data1, data2);
+            
+            node.data = dataset;
+            
             if gain > best_gain
-                % Atribui ao nó raiz o nó com melhor ganho
-                root_node = temp_node;
+                node.feature = feature;
+                node.bias = bias;
+                node.gain = gain;
                 best_gain = gain;
             end
         end
     end
 end
 
-% Funçaõ que espande os nós
-function node_children = raise_nodes(node_father)
+% Função que encontra o nó raiz da árvore
+function root_node = find_root(dataset)
+    
+    root_node = best_node(dataset);
+    root_node.type = 'r' % r para root
+    root_node.depth = 0;
+    
+end
 
+% Função que espande os nós
+function node_children = raise_nodes(node_father)
+    
+    data_father = node_father.data;
+    feature = node_father.feature;
+    bias = node_father.bias;
+    depth = node_father.depth;
+    
+    % Inicializando o nó filho 1
+    node_1.type = 'm'; % m quer dizer nó intermediário
+    node_1.depth = depth+1;
+    
+    % Inicializando o nó filho 1
+    node_2.type = 'm'; % m quer dizer nó intermediário
+    node_2.depth = depth+1;
+    
+    [node_1.data, node_2.data] = split_data(node_father);
+    
+    node_children = [node_1 node_2];
 end
 
 % Função que calcula a entropia
