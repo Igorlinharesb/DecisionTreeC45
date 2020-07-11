@@ -28,8 +28,9 @@ histograms(data, features)
 
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
-selected_data = data(:, [1 3 7 10 13 14]);
+% selected_data = data(:, [1 3 7 10 13 14]);
 
+selected_data = data;
 % Dividi o atributo Prolina por 1000 apenas para facilitar o acompanhamento
 % pela janela de comando
 selected_data(:, 5) = selected_data(:, 5)/1000;
@@ -41,13 +42,9 @@ selected_data(:, 5) = selected_data(:, 5)/1000;
 root = find_root(selected_data);
 tree = expand_tree(root);
 
-% Laço que subdivide a árvore até chegar às folhas   
-
-
 % Cross validation
     
 toc;
-    
 % --------------------------- FUNÇÕES -------------------------------------
 
 % Função que faz a plotagem em pares, recebe como parâmetro a matriz de
@@ -83,6 +80,8 @@ end
 % selecionados
 % function pairplots(dataset, feature_names)
 
+% Função de visualização da árvore
+
 % Função que encontra a condição que melhor separa os dados e retorna o nó
 function node = best_node(dataset)
     
@@ -90,8 +89,8 @@ function node = best_node(dataset)
     
     for feature=1:size(dataset, 2)-1
         range = max(dataset(:, feature)) - min(dataset(:, feature));
-        divisions = 10;
-        pace = range/10;
+        divisions = 100;
+        pace = range/divisions;
         
         % Testando 10 valores do atributo para separar o dataset
         for i=1:divisions-1
@@ -181,7 +180,7 @@ function node_father = expand_tree(node_father)
         node_1 = best_node(data_1);
         node_1.type = 'm';
         node_1.depth = depth+1;
-        node_1.expanded = 0;
+        node_1.expanded = 1;
     else
         node_1.data = data_1;
         node_1.entopy = entropy(data_1);
@@ -219,6 +218,8 @@ function node_father = expand_tree(node_father)
     else
         node_father.child_2 = expand_tree(node_2);
     end
+    
+    node_father.expanded = 1;
 end
 
 % Função que calcula a entropia
