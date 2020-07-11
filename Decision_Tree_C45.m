@@ -24,14 +24,25 @@ features = {'Álcool', 'Ácido málico', 'Cinza', 'Alcalinidade da cinza',...
             'Intensidade da cor', 'Matiz', 'OD280/OD315', 'Prolina'};
 
 % Plotando histograma dos dados para análise
-% histograms(data, features)
+histograms(data, features)
 
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
 selected_data = data(:, [1 3 7 10 13 14]);
 
+% Testa árvore com os atributos selecionados à priori
 result = cross_validation(selected_data, 10);
+
+% Faz teste com árvore criada com outros atributos
+result2 = cross_validation(data(:, [2 4 5 6 7 8 11 12 14]), 10);
+
+% Faz teste com árvore criada com todos os atributos
+result3 = cross_validation(data, 10);
+
+% Mostra as precisões médias na janela de comando
 avg_result = mean(result)
+avg_result2 = mean(result2)
+avs_result3 = mean(result3)
 
 toc;
 % --------------------------- FUNÇÕES -------------------------------------
@@ -39,27 +50,27 @@ toc;
 % Função que faz a plotagem em pares, recebe como parâmetro a matriz de
 % atributos e os nomes dos atributos.
 function histograms(dataset, feature_names)
-
-    m = length(feature_names); % Número de atributos
+    
+    n = length(feature_names);
     classes = unique(dataset(:,end)); % Variáveis target
+    
     % Cores para plotagem
     colors = [0 0.4470 0.7410;0.8500 0.3250 0.0980;0.9290 0.6940 0.1250];
-    % Quantidade de linhas de plotagens
-    rows = ceil(m/3);
+    
+    rows = ceil(n/3);
     
     figure('Name', 'Histogramas');
-    % Laço que povoa os subplots
-    for i=1:m
-        subplot(rows,3, i);
+    for i=1:n
         bins = linspace(min(dataset(:, i)), max(dataset(:, i)), 25);
+        counts = zeros(length(bins), length(classes));
+        
         for j=1:length(classes)
-            % Filtra os dados por classe
-            class_data = dataset(dataset(:, end)==classes(j), :);
-            % Plota o histograma de cada classe
-            histogram(class_data(:,i), bins, 'FaceColor', colors(j,:), ...
-                        'FaceAlpha', 0.7);
-            hold on;
+           class_data = dataset(dataset(:, end)==classes(j), i);
+           counts(:, j) = histc(class_data, bins);
         end
+        
+        subplot(rows,3, i);
+        bar(bins, counts, 'stacked');
         title(feature_names(i));
         hold off;
     end
@@ -68,8 +79,6 @@ end
 % Função que realiza a plotagem dos scatter plots dos atributos
 % selecionados
 % function pairplots(dataset, feature_names)
-
-% Função de visualização da árvore
 
 % Função que encontra a condição que melhor separa os dados e retorna o nó
 function node = best_node(dataset)
