@@ -28,12 +28,11 @@ histograms(data, features)
 
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
-% selected_data = data(:, [1 3 7 10 13 14]);
+selected_data = data(:, [1 3 7 10 13 14]);
 
-selected_data = data;
 % Dividi o atributo Prolina por 1000 apenas para facilitar o acompanhamento
 % pela janela de comando
-selected_data(:, 5) = selected_data(:, 5)/1000;
+%selected_data(:, 5) = selected_data(:, 5)/1000;
 
 % pair plots
 
@@ -42,8 +41,11 @@ selected_data(:, 5) = selected_data(:, 5)/1000;
 root = find_root(selected_data);
 tree = expand_tree(root);
 
-% Cross validation
-    
+teste = zeros(length(selected_data), 1);
+for i=1:length(selected_data)
+    teste(i) = predict(tree, selected_data(i,1:end-1));
+end
+
 toc;
 % --------------------------- FUNÇÕES -------------------------------------
 
@@ -243,4 +245,20 @@ function [initial_entropy, gain] = information_gain(dataset, split1, split2)
     ent2 = entropy(split2);
     
     gain = initial_entropy - (ent1+ent2)/2;
+end
+
+% Função que efetua a classificação de uma amostra:
+function prediction = predict(tree, sample)
+
+    % Verificando se a árvore se resume à uma folha
+    if tree.type == 'l'
+        prediction = tree.class;
+    else
+        % Verificando para qual nó filho a amostra vai ser direcionada
+        if sample(tree.feature) <= tree.bias
+            prediction = predict(tree.child_1, sample);
+        else
+            prediction = predict(tree.child_2, sample);
+        end
+    end
 end
