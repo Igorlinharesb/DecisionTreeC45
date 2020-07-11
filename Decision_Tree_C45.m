@@ -24,27 +24,14 @@ features = {'Álcool', 'Ácido málico', 'Cinza', 'Alcalinidade da cinza',...
             'Intensidade da cor', 'Matiz', 'OD280/OD315', 'Prolina'};
 
 % Plotando histograma dos dados para análise
-histograms(data, features)
+% histograms(data, features)
 
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
 selected_data = data(:, [1 3 7 10 13 14]);
 
-% Dividi o atributo Prolina por 1000 apenas para facilitar o acompanhamento
-% pela janela de comando
-%selected_data(:, 5) = selected_data(:, 5)/1000;
-
-% pair plots
-
-% Criando a árvore
-% root = find_root(selected_data) % Nó raiz
-root = find_root(selected_data);
-tree = expand_tree(root);
-
-teste = zeros(length(selected_data), 1);
-for i=1:length(selected_data)
-    teste(i) = predict(tree, selected_data(i,1:end-1));
-end
+result = cross_validation(selected_data, 10);
+avg_result = mean(result)
 
 toc;
 % --------------------------- FUNÇÕES -------------------------------------
@@ -163,6 +150,7 @@ function node_father = expand_tree(node_father)
     
     % Extraindo os dados do nó pai
     data_father = node_father.data;
+    
     feature = node_father.feature;
     bias = node_father.bias;
     depth = node_father.depth;
@@ -260,5 +248,63 @@ function prediction = predict(tree, sample)
         else
             prediction = predict(tree.child_2, sample);
         end
+    end
+end
+
+% Função que recebe dados de treino e teste, cria árvore de decisão com
+% base no dataset de treino, faz a previsão das amostras de teste e retorna
+% a precisão das previsões.
+function score = evaluate_tree (train, test)
+    
+    % Cria árvore com base nos dados de treino
+    root = find_root(train);
+    tree = expand_tree(root);
+    
+    % Realiza as previsões para cada amostra de teste e conta os acertos
+    hits = 0;
+    for i=1: length(test)
+        prediction = predict(tree, test(i, 1:end-1));
+        if prediction == test(i, end)
+            hits = hits+1;
+        end
+    end
+    score = hits/length(test);     
+end
+
+% Cross validation que retorna um array com a precisão em cada divisão
+function scores = cross_validation(dataset, folds)
+    
+    % Inicializando o vetor de scores
+    scores = zeros(1, folds);
+    
+    % Retorna o tamanho das partições de teste
+    partitions = cvpartition(length(dataset), 'Kfold', 10);
+    test_sizes = partitions.TestSize;
+    
+    % Inicializando o vetor de índices aleatórios
+    indexes = randperm(length(dataset), length(dataset));
+    
+    % As variáveis b e e ajudarão a controlar em que posição os índices de 
+    % teste iniciam e terminam em indexes
+    b = 0;
+    e = 0;
+    
+    for i=1:folds
+        
+       % Dividindo os data sets de treino e teste
+       temp_indexes = indexes;
+       
+       % Teste
+       e = e + test_sizes(i);
+       test_indexes = temp_indexes(b+1:e);
+       test = dataset(test_indexes, :);
+       
+       % Treino
+       temp_indexes(b+1:e) = [];
+       train = dataset(temp_indexes, :);
+       b = e+1;       
+       
+       % Avaliação do modelo
+       scores(i) = evaluate_tree(train, test);
     end
 end
