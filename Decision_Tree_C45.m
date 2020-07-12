@@ -2,7 +2,7 @@
 % Reconhecimento de  Padrões - 2020.1
 % Francisco Igor Felício Linhares - 374874
 
-% Decision Tree C4.5implementado e avaliados com Cross-Validation
+% Decision Tree C4.5 implementado e avaliados com Cross-Validation
 
 % Comando para ver tempo de execução do script
 tic;
@@ -29,12 +29,17 @@ histograms(data, features)
 % A partir dos histogramas, escolhi os atributos Álcool, Cinza, Flavonóides,
 % Intensidade de cor e Prolina, por aparentarem ser bons discriminantes
 selected_data = data(:, [1 3 7 10 13 14]);
+selected_names = features([1 3 7 10 13]);
+
+% Plotando gráficos de dispersão
+pairplot(selected_data, selected_names)
 
 % Testa árvore com os atributos selecionados à priori
 result = cross_validation(selected_data, 10);
 
-% Faz teste com árvore criada com outros atributos
-result2 = cross_validation(data(:, [2 4 5 6 7 8 11 12 14]), 10);
+% Faz teste com árvore criada com atributos que não aparentam ser bons
+% discriminantes
+result2 = cross_validation(data(:, [2 4 5 8 14]), 10);
 
 % Faz teste com árvore criada com todos os atributos
 result3 = cross_validation(data, 10);
@@ -53,10 +58,8 @@ function histograms(dataset, feature_names)
     
     n = length(feature_names);
     classes = unique(dataset(:,end)); % Variáveis target
-    
-    % Cores para plotagem
-    colors = [0 0.4470 0.7410;0.8500 0.3250 0.0980;0.9290 0.6940 0.1250];
-    
+   
+    % Quantidade de linhas de gráficos
     rows = ceil(n/3);
     
     figure('Name', 'Histogramas');
@@ -76,9 +79,41 @@ function histograms(dataset, feature_names)
     end
 end
 
+
 % Função que realiza a plotagem dos scatter plots dos atributos
 % selecionados
-% function pairplots(dataset, feature_names)
+function pairplot(dataset, feature_names)
+
+    m = length(dataset(1,1:end-1)); % Número de atributos
+    
+    classes = unique(dataset(:, end));
+    
+    figure('Name', 'Gráficos de Dispersão');
+    % Laço que povoa os subplots
+    for i=2:m % Linhas
+        for j=1:i-1 % Colunas
+            subplot(m-1, m-1, (m-1)*(i-2) + j)
+            for k=1:length(classes)
+                class_data = dataset(dataset(:, end)==k, :);
+                plot(class_data(:, j), class_data(:, i), '.',...
+                     'MarkerSize', 9);
+                hold on;
+            end
+            
+            % Adicionando label nos eixos horizontais da última linha
+            if i==m
+                xlabel(feature_names(j))
+            end
+            
+            % Adicionando label nos eixos verticais da primeira coluna
+            if j==1
+                ylabel(feature_names(i))
+            end
+        end
+        hold off;
+    end
+end
+
 
 % Função que encontra a condição que melhor separa os dados e retorna o nó
 function node = best_node(dataset)
@@ -86,11 +121,13 @@ function node = best_node(dataset)
     best_gain = 0;
     
     for feature=1:size(dataset, 2)-1
+        % Para cada atributo serão utilizados 100 valores igualmente
+        % espaçados para avaliar o ganho de infomação para cada valor
         range = max(dataset(:, feature)) - min(dataset(:, feature));
         divisions = 100;
         pace = range/divisions;
         
-        % Testando 10 valores do atributo para separar o dataset
+        % Testando 100 valores do atributo para separar o dataset
         for i=1:divisions-1
             bias = min(dataset(:, feature))+ i*pace;
             
@@ -101,8 +138,8 @@ function node = best_node(dataset)
             % Cálculo da entropia inicial e do ganho de informação
             [initial_entropy, gain] = information_gain(dataset, data1, data2);
             
+            % Cria o nó com as melhores características
             node.data = dataset;
-            
             if gain > best_gain
                 node.entropy = initial_entropy;
                 node.feature = feature;
@@ -114,6 +151,7 @@ function node = best_node(dataset)
     end
 end
 
+
 % Função que encontra o nó raiz da árvore
 function root_node = find_root(dataset)
     
@@ -124,15 +162,20 @@ function root_node = find_root(dataset)
     
 end
 
+
 % Função que retorna zero se os dados representam um nó intermediário e
 % retorna a classe no caso de ser uma folha
 function isleaf = is_leaf(data)
+    % Para identificar se o nó constitui uma folha utilizei 2 critérios:
+    % 1 - se alguma classe representa mais de 80% dos dados daquele nó
+    % 2 - se o nó possui 4 amostras ou menos, é retornada a classe com mais
+    % amostras nos dados do nó.
     
+    % Inicializa a variável de retorno
     isleaf = 0;
     
     % Calcula as probabilidades das classes nos dados do nó
     classes = unique(data(:, end));
-    
     prior_probs = zeros(length(classes), 1);
     
     for i=1: length(classes)
@@ -154,22 +197,21 @@ function isleaf = is_leaf(data)
     end
 end
 
-% Função que espande a árvore
+
+% Função que expande a árvore
 function node_father = expand_tree(node_father)
     
     % Extraindo os dados do nó pai
-    data_father = node_father.data;
-    
-    feature = node_father.feature;
-    bias = node_father.bias;
-    depth = node_father.depth;
+    data_father = node_father.data; % Dados do nó
+    feature = node_father.feature; % Atributo utilizado na divisão
+    bias = node_father.bias; % bias
+    depth = node_father.depth; % Profundidade do nó
     
     % Divisão dos dados e atribuição aos nós filhos
     data_1 = data_father(data_father(:, feature) <= bias, :);
     data_2 = data_father(data_father(:, feature) > bias, :);
     
     % Iniciando com o nó 1
-    
     % Verifica se os dados constituem uma folha ou um nó intermediário
     isleaf = is_leaf(data_1);
     
@@ -177,13 +219,13 @@ function node_father = expand_tree(node_father)
         % Caso o não seja uma folha é encontrado o melhor critério de
         % divisão
         node_1 = best_node(data_1);
-        node_1.type = 'm';
+        node_1.type = 'm';  % Altera o tipo do nó para middle (m)
         node_1.depth = depth+1;
         node_1.expanded = 1;
     else
         node_1.data = data_1;
         node_1.entopy = entropy(data_1);
-        node_1.type = 'l'; % l para folha
+        node_1.type = 'l'; % Altera o tipo do nó para leaf (l)
         node_1.depth = depth+1;
         node_1.class = isleaf;
     end
@@ -192,8 +234,6 @@ function node_father = expand_tree(node_father)
     isleaf = is_leaf(data_2);
     
     if isleaf == 0
-        % Caso o não seja uma folha é encontrado o melhor critério de
-        % divisão
         node_2 = best_node(data_2);
         node_2.type = 'm';
         node_2.depth = depth+1;
@@ -206,12 +246,16 @@ function node_father = expand_tree(node_father)
         node_2.class = isleaf;
     end
     
+    % Avaliando o nó 1
     if node_1.type == 'l'
+        % Se o nó for uma folha, a divisão é interrompida
         node_father.child_1 = node_1;
     else
+        % Se não for folha continua expandindo o nó
         node_father.child_1 = expand_tree(node_1);
     end
     
+    % Avaliando o nó 2
     if node_2.type == 'l'
         node_father.child_2 = node_2;
     else
@@ -221,28 +265,38 @@ function node_father = expand_tree(node_father)
     node_father.expanded = 1;
 end
 
+
 % Função que calcula a entropia
 function result = entropy(dataset)
     
+    % Classes da base de dados
     classes = unique(dataset(:, end));
     
-    result = 0;
     % Calcular a entropia
+    result = 0;
     for i=1: length(classes)
+        % Número de amostras da classe
         count = length(dataset(dataset(:,end) == classes(i)));
-        prior_prob = count/length(dataset);
-        result = result - prior_prob*log2(prior_prob);
+        prior_prob = count/length(dataset); % probabilidade à priori
+        result = result - prior_prob*log2(prior_prob); % Entropia
     end
 end
 
+
 % Função que calcula o ganho de informação
 function [initial_entropy, gain] = information_gain(dataset, split1, split2)
+    
+    % Entropia inicial
     initial_entropy = entropy(dataset);
+    
+    % Entropia das divisões
     ent1 = entropy(split1);
     ent2 = entropy(split2);
     
+    % Ganho de informação
     gain = initial_entropy - (ent1+ent2)/2;
 end
+
 
 % Função que efetua a classificação de uma amostra:
 function prediction = predict(tree, sample)
@@ -260,10 +314,11 @@ function prediction = predict(tree, sample)
     end
 end
 
+
 % Função que recebe dados de treino e teste, cria árvore de decisão com
 % base no dataset de treino, faz a previsão das amostras de teste e retorna
 % a precisão das previsões.
-function score = evaluate_tree (train, test)
+function score = evaluate_tree(train, test)
     
     % Cria árvore com base nos dados de treino
     root = find_root(train);
@@ -280,10 +335,12 @@ function score = evaluate_tree (train, test)
     score = hits/length(test);     
 end
 
+
 % Cross validation que retorna um array com a precisão em cada divisão
+% treino-teste.
 function scores = cross_validation(dataset, folds)
     
-    % Inicializando o vetor de scores
+    % Inicializando o vetor de precisões
     scores = zeros(1, folds);
     
     % Retorna o tamanho das partições de teste
@@ -293,22 +350,23 @@ function scores = cross_validation(dataset, folds)
     % Inicializando o vetor de índices aleatórios
     indexes = randperm(length(dataset), length(dataset));
     
-    % As variáveis b e e ajudarão a controlar em que posição os índices de 
-    % teste iniciam e terminam em indexes
     b = 0;
     e = 0;
     
     for i=1:folds
         
+        % As variáveis b e e ajudarão a controlar em que posição os índices 
+        % de teste iniciam e terminam em indexes
+        
        % Dividindo os data sets de treino e teste
        temp_indexes = indexes;
        
-       % Teste
+       % Separando base para teste
        e = e + test_sizes(i);
        test_indexes = temp_indexes(b+1:e);
        test = dataset(test_indexes, :);
        
-       % Treino
+       % Atribuindo o restante para treino
        temp_indexes(b+1:e) = [];
        train = dataset(temp_indexes, :);
        b = e+1;       
