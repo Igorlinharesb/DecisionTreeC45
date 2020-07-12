@@ -37,12 +37,12 @@ pairplot(selected_data, selected_names)
 % Testa árvore com os atributos selecionados à priori
 result = cross_validation(selected_data, 10);
 
+% Faz teste com árvore criada com todos os atributos
+result2 = cross_validation(data, 10);
+
 % Faz teste com árvore criada com atributos que não aparentam ser bons
 % discriminantes
-result2 = cross_validation(data(:, [2 4 5 8 14]), 10);
-
-% Faz teste com árvore criada com todos os atributos
-result3 = cross_validation(data, 10);
+result3 = cross_validation(data(:, [2 4 5 8 14]), 10);
 
 % Mostra as precisões médias na janela de comando
 avg_result = mean(result)
